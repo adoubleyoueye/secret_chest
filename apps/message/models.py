@@ -1,6 +1,9 @@
-from typing import Optional
 import uuid
 from pydantic import BaseModel, Field
+
+"""
+This is where we define our Message model
+"""
 
 
 class MessageModel(BaseModel):

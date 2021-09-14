@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Body, Request, HTTPException, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from cryptography.fernet import Fernet
 from pydantic import BaseModel
@@ -21,7 +21,6 @@ async def encrypt_message(message):
     key = Fernet.generate_key()
     fernet = Fernet(key)
     message = fernet.encrypt(message.encode())
-    decMessage = fernet.decrypt(message).decode()
     return [message, key]
 
 
@@ -56,19 +55,21 @@ After we insert the encrypted message into our collection, we use the inserted_i
 @router.post("/", response_description="Drop message")
 async def create_message(request: Request, message: MessageModel = Body(...)):
     message_and_key = await encrypt_message(message.text)
-    location = message.id
+    message_location = message.id
     message.text = message_and_key[0]
     message = jsonable_encoder(message)
     new_message = await request.app.mongodb["secrets"].insert_one(message)
-    data = {"Location": location, "Password": message_and_key[1]}
-    data = jsonable_encoder(data)
-    return JSONResponse(status_code=status.HTTP_201_CREATED, content=data)
+    response_data = {"Location": message_location, "Password": message_and_key[1]}
+    response_data = jsonable_encoder(response_data)
+    return JSONResponse(status_code=status.HTTP_201_CREATED, content=response_data)
 
 """
 The message detail route has a path parameter of id, which FastAPI passes as an argument to the show_message function.
 We use the id to attempt to find the corresponding message in the database.
 
 If a document with the specified id does not exist, we raise an HTTPException with a status of 404.
+
+As soon as a secret get's decrypted it will only be shown once and deleted afterwards
 """
 
 
